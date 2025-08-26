@@ -1,26 +1,25 @@
-import { openai } from '@ai-sdk/openai';
+import { google } from '@ai-sdk/google';
 import { streamText } from 'ai';
+import { NextResponse } from 'next/server';
 
-// Allow streaming responses up to 30 seconds
-export const maxDuration = 30;
+export const runtime = 'edge';
 
-export async function POST(req: Request) {
-    try {
-        // const prompt = ""
-        const { messages } = await req.json();
+export async function POST(_req: Request) {
+  try {
+    const prompt =
+      "Generate a fresh and creative list of three open-ended questions formatted as a single string, with each question separated by '||'. The primary goal is to produce a novel set of questions each time this prompt is used to spark unique conversations on an anonymous social platform like Qooh.me. Avoid overly common or repetitive questions (e.g., 'What's your favorite movie?', 'What's your dream job?'). Instead, focus on imaginative, universal themes that encourage reflection and friendly interaction. For structure, your output should resemble: 'If you could have any scent as a candle, what would you choose?||What's a small, everyday thing that feels like magic?||What's a skill you've always admired in others?'.";
 
-        const result = streamText({
-            model: openai('gpt-4o'),
-            messages,
-            // prompt,
-        });
+    // The entire streaming logic is now a single, unified function call
+    const result = await streamText({
+      model: google('gemini-1.5-flash'), // Simple model declaration
+      prompt: prompt,
+    });
 
-        return result.toDataStreamResponse();
-    } catch (error) {
-        console.log("Error in setting up AI connnection: ", error)
-        return Response.json({
-            success: false,
-            message: "AI chat configuration error"
-        }, { status: 403 })
-    }
+    // Return the stream directly using the built-in helper
+    return result.toDataStreamResponse();
+
+  } catch (error) {
+    console.error('An unexpected error occurred:', error);
+    return new NextResponse('An internal server error occurred', { status: 500 });
+  }
 }

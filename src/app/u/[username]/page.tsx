@@ -8,7 +8,7 @@ import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { CardHeader, CardContent, Card } from '@/components/ui/card';
-import { useCompletion } from 'ai/react';
+import { useCompletion } from 'ai/react'; // This import is correct for the latest SDK
 import {
   Form,
   FormControl,
@@ -18,7 +18,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Textarea } from '@/components/ui/textarea';
-import { toast, useToast } from '@/hooks/use-toast'
+import { useToast } from '@/hooks/use-toast';
 import * as z from 'zod';
 import { ApiResponse } from '@/types/ApiResponse';
 import Link from 'next/link';
@@ -28,15 +28,18 @@ import { messageSchema } from '@/schemas/messageSchema';
 const specialChar = '||';
 
 const parseStringMessages = (messageString: string): string[] => {
-  return messageString.split(specialChar);
+  // Filter out any empty strings that might result from trailing separators
+  return messageString.split(specialChar).filter(Boolean);
 };
 
 const initialMessageString =
-  "What's your favorite movie?||Do you have any pets?||What's your dream job?";
+  "What's a song you have on repeat?||If you could learn any new skill, what would it be?||What's a simple thing that made you smile today?";
 
 export default function SendMessage() {
   const params = useParams<{ username: string }>();
   const username = params.username;
+
+  const { toast } = useToast();
 
   const {
     complete,
@@ -44,7 +47,7 @@ export default function SendMessage() {
     isLoading: isSuggestLoading,
     error,
   } = useCompletion({
-    api: '/api/suggest-messages',
+    api: '/api/suggest-messages', // This correctly points to your new backend route
     initialCompletion: initialMessageString,
   });
 
@@ -70,7 +73,6 @@ export default function SendMessage() {
 
       toast({
         title: response.data.message,
-        variant: 'default',
       });
       form.reset({ ...form.getValues(), content: '' });
     } catch (error) {
@@ -78,7 +80,7 @@ export default function SendMessage() {
       toast({
         title: 'Error',
         description:
-          axiosError.response?.data.message ?? 'Failed to sent message',
+          axiosError.response?.data.message ?? 'Failed to send message',
         variant: 'destructive',
       });
     } finally {
@@ -88,15 +90,19 @@ export default function SendMessage() {
 
   const fetchSuggestedMessages = async () => {
     try {
-      complete('');
+      await complete('');
     } catch (error) {
       console.error('Error fetching messages:', error);
-      // Handle error appropriately
+      toast({
+        title: 'Error',
+        description: 'Failed to fetch suggested messages.',
+        variant: 'destructive',
+      });
     }
   };
 
   return (
-    <div className="container mx-auto my-8 p-6 bg-white rounded max-w-4xl">
+    <div className="container mx-auto my-8 p-6 bg-white rounded-lg shadow-md max-w-4xl">
       <h1 className="text-4xl font-bold mb-6 text-center">
         Public Profile Link
       </h1>
@@ -141,29 +147,36 @@ export default function SendMessage() {
             className="my-4"
             disabled={isSuggestLoading}
           >
-            Suggest Messages
+            {isSuggestLoading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Generating...
+              </>
+            ) : (
+              'Suggest Messages'
+            )}
           </Button>
-          <p>Click on any message below to select it.</p>
+          <p className="text-sm text-gray-500">
+            Click on any message below to select it.
+          </p>
         </div>
         <Card>
           <CardHeader>
             <h3 className="text-xl font-semibold">Messages</h3>
           </CardHeader>
           <CardContent className="flex flex-col space-y-4">
-            {error ? (
-              <p className="text-red-500">{error.message}</p>
-            ) : (
+            {error && <p className="text-red-500">{error.message}</p>}
+            {completion &&
               parseStringMessages(completion).map((message, index) => (
                 <Button
                   key={index}
                   variant="outline"
-                  className="mb-2"
+                  className="mb-2 text-left h-auto whitespace-normal"
                   onClick={() => handleMessageClick(message)}
                 >
                   {message}
                 </Button>
-              ))
-            )}
+              ))}
           </CardContent>
         </Card>
       </div>
